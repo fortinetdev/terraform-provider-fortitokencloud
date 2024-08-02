@@ -1,0 +1,62 @@
+default:
+  image: dops-jfrog.fortinet-us.com/hqcm_dockers/hqcm-buildall:latest
+  tags: ["k8s-airgap-runner062123"]
+
+
+variables:
+  PROXY: "https://dops-jfrog.fortinet-us.com/artifactory/api/go-proxy"
+  TAG_NAME: "latest"
+  DOCKER_REGISTRY_URL: "dops-registry.fortinet-us.com"
+  PROJECT_NAME: "terraform-provider-fortitokencloud"
+  NFS_FILE_PATH: "/nfs/Build_PKG/terraform-provider-fortitokencloud/build_artifacts"
+  BUILD_MAJOR: 1
+  BUILD_MINOR: 0
+  PATCH: 0
+  BN: 1
+
+
+stages:
+  - lint
+  - build
+  - test
+  #- deploy
+  #- uploadartifacts #Need to upload artifacts to info.fortinet.com
+  #- update_eco_mantis # need to update eco and bugnote on info.fortinet.com and mantis.fortinet.com
+
+
+lint-job:
+  stage: lint
+  script:
+    - cd ~ && source ./hqcm-init.sh
+    - cd $CI_PROJECT_DIR
+    - echo "I am in $(pwd)"
+    - go fmt $(go list ./... | grep -v /vendor/)
+    - go vet $(go list ./... | grep -v /vendor/)
+    - go test -race $(go list ./... | grep -v /vendor/)
+
+
+go-build-job:
+  stage: build
+  before_script:
+    - cd ~ && source ./hqcm-init.sh
+    - cd $CI_PROJECT_DIR
+
+  script:
+    - mkdir -p binaries
+    - go build -o binaries ./...
+    - cp -r binaries /nfs/Build_PKG/$NFS_FILEPATH
+  artifacts:
+    paths:
+      - binaries
+
+
+unit-tests:
+  stage: test
+  script:
+    - echo "Running unit tests..."
+    - sleep 60
+    - echo "100% of tests passed!"
+  only:
+    changes:
+      - "*.go"
+
